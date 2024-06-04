@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Авторизация</title>
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <div class="header">
+    <div class="header__wrapper">
+      <h1>Пожалуйста, авторизуйтесь!</h1>
+
+      <p class="item-text">Логин:</p>
+      <input
+          type="text"
+          id="login"
+          placeholder="Логин"
+      />
+
+      <p class="item-text">Пароль:</p>
+      <input
+          type="text"
+          id="password"
+          placeholder="Пароль"
+      />
+      <button id="authButton">Войти</button>
+
+      <div class="footer">
+        <p>Нет аккаунта?</p> <button id="registerButton">Создать</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const handleLogin = async (e) => {
+      e.preventDefault();
+      try {
+        const login = document.getElementById('login').value;
+        const password = document.getElementById('password').value;
+
+        if (!login || !password) {
+          alert('Пожалуйста, заполните все поля.');
+          return;
+        }
+
+        const response = await fetch('http://localhost:3000/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ login, password }),
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+          alert("Неверные данные")
+          document.getElementById('login').value = '';
+          document.getElementById('password').value = '';
+        }
+        else if (data.success && data.user) {
+          window.electron.send('open-account-window')
+
+          window.close()
+        }
+      } catch (error) {
+        console.error(error.message);
+      }
+    };
+
+    document.getElementById('authButton').addEventListener('click', handleLogin)
+
+
+    document.getElementById('registerButton').addEventListener('click', () => {
+      window.electron.send('open-register-window');
+    });
+  </script>
+</body>
+</html>
