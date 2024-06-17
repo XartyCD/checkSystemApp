@@ -6,14 +6,248 @@
 </head>
 <body>
   <div class="header">
-    <div class="header__wrapper">
-      <nav class="nav">
-        <button id="authButton">Войти</button>
-      </nav>
-    </div>
+    <nav class="nav">
+      <button id="closeProfile">Выйти из аккаунта</button>
+      <p class="profile__text">Вы авторизованы как <span id="username"></span></p>
+      <button id="deleteBut">Удалить пользователя</button>
+    </nav>
+    <main class="main">
+      <div class="history">
+        <div id="applicationsContainer">
+          <h2>Прошлые сканирования:</h2>
+          <ul id="applicationsList"></ul>
+        </div>
+      </div>
+      <div class="diagnostic__wrapper">
+        <div class="diagnostic">
+          <button class="config" id="config">Конфигурация ПК</button>
+          <button class="reestr" id="reestr">Реестр</button>
+          <button class="apps" id="apps">Список ПО</button>
+        </div>
+      </div>
+
+      <div id="popup__config">
+        <div class="confirm">
+          <p class="item-text">Ваша конфигурация</p>
+        </div>
+        <div class="info" id="content"></div>
+        <div class="buttons">
+          <button class="closeButton" id="cancelButton">Отмена</button>
+          <button id="accessButton" download="system_info.txt">Сохранить как</button>
+        </div>
+      </div>
+
+      <div id="popup__reestr">
+        <div class="confirm">
+          <p class="item-text">Ваш журнал</p>
+        </div>
+        <div class="buttons">
+          <button class="closeButton" id="cancelButton">Отмена</button>
+          <button id="accessButt" download="reestr_info.txt">Сохранить как</button>
+        </div>
+      </div>
+
+      <div id="popup__apps">
+        <div class="confirm">
+          <p class="item-text">Ваши приложения</p>
+        </div>
+        <div class="buttons">
+          <button class="closeButton" id="cancelButton">Отмена</button>
+          <button id="accessButto" download="apps_info.txt">Сохранить как</button>
+        </div>
+      </div>
+
+    </main>
   </div>
 
   <script>
+    const login = localStorage.getItem('userLogin');
+    document.getElementById('username').innerHTML = login;
+
+    const scanSystem = async () => {
+      try {
+        // Fetch system information
+        const systemInfo = await window.electron.getSystemInfo();
+        
+        // Format disk sizes
+        const disks = systemInfo.disk.map(disk => `${disk.type}: ${Math.round(disk.size / (1024 * 1024 * 1024))} GB`);
+        
+        // Format OS information
+        const osDetails = `${systemInfo.osInfo.distro} ${systemInfo.osInfo.release}`;
+        
+        // Format memory usage
+        const usedMemory = systemInfo.memory.used / (1024 * 1024 * 1024);
+        
+        // Format CPU temperature (handle null case)
+        const cpuTemp = systemInfo.cpuTemp ? `${systemInfo.cpuTemp.main} °C` : 'N/A';
+
+        // Update DOM elements with system information
+        const content = `
+          <div>Motherboard: ${systemInfo.motherboard.manufacturer} ${systemInfo.motherboard.model}</div>
+          <div>CPU: ${systemInfo.cpu.manufacturer} ${systemInfo.cpu.brand}</div>
+          <div>Memory: ${(systemInfo.memory.total / 1024 / 1024 / 1024).toFixed(2)} Гб (Используется: ${usedMemory.toFixed(2)} Гб)</div>
+          <div>Disk(s): ${disks.join(', ')}</div>
+          <div>OS: ${osDetails}</div>
+          <div>CPU Temperature: ${cpuTemp}</div>
+          <div id="cpu-load">CPU Load: Вычисление... </div>
+          <div id="mem-usage">Memory Usage: Вычисление... </div>
+        `;
+        document.getElementById('content').innerHTML = content;
+      } catch (error) {
+        console.error('Error scanning system:', error);
+      }
+    };
+
+    //Динамические значения
+    const updateCpuLoad = async () => {
+      try {
+        const cpuLoad = await window.electron.getCpuLoad();
+        const cpuLoadElement = document.getElementById('cpu-load');
+        if (cpuLoadElement) {
+          cpuLoadElement.innerText = `CPU Load: ${(cpuLoad * 100).toFixed(2)}%`;
+        }
+      } catch (error) {
+        console.error('Error updating CPU load:', error);
+      }
+    };
+
+    const updateMemoryUsage = async () => {
+      try {
+        const memInfo = await window.electron.getMemoryUsage();
+        const usedMemory = memInfo.used / (1024 * 1024 * 1024);
+        const memUsageElement = document.getElementById('mem-usage');
+        if (memUsageElement) {
+          memUsageElement.innerText = `Memory Usage: ${usedMemory.toFixed(2)} GB`;
+        }
+      } catch (error) {
+        console.error('Error updating memory usage:', error);
+      }
+    };
+
+
+    document.addEventListener('DOMContentLoaded', () => {
+      setInterval(updateCpuLoad, 1000);
+      setInterval(updateMemoryUsage, 2000); // Update memory usage every 2 seconds
+    });
+
+    //Динамические значения
+
+
+    document.getElementById('closeProfile').addEventListener('click', () => {
+      window.close();
+      window.electron.send('open-auth-window');
+    });
+
+
+    const deleteUser = async () => {
+      try {
+        const response = await fetch('http://localhost:3000/delete-user', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ login }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          window.close();
+          window.electron.send('open-auth-window');
+        } else {
+          
+        }
+      } catch (error) {
+        console.error('Ошибка при удалении пользователя:', error);
+      }
+    };
+
+    //Конфигурация
+    const configCreate = document.getElementById('popup__config');
+    const createPopupConfig = async () => {
+      if (getComputedStyle(configCreate).display == 'none') {
+        scanSystem()
+
+
+        configCreate.style.display = "flex";
+        reestrCreate.style.display = "none";
+        appsCreate.style.display = "none";
+
+      } else if (getComputedStyle(configCreate).display == 'flex') {
+        configCreate.style.display = "none";
+      }
+    };
+
+    //Реестр
+    const reestrCreate = document.getElementById('popup__reestr');
+    const createPopupReestr = () => {
+      if (getComputedStyle(reestrCreate).display == 'none') {
+        reestrCreate.style.display = "flex";
+        configCreate.style.display = "none";
+        appsCreate.style.display = "none";
+      }
+      else if (getComputedStyle(reestrCreate).display == 'flex') {
+        reestrCreate.style.display = "none";
+      }
+    }
+
+    //Важное ПО
+    const appsCreate = document.getElementById('popup__apps');
+    const createPopupApps = () => {
+      if (getComputedStyle(appsCreate).display == 'none') {
+        appsCreate.style.display = "flex";
+        configCreate.style.display = "none";
+        reestrCreate.style.display = "none";
+      }
+      else if (getComputedStyle(appsCreate).display == 'flex') {
+        appsCreate.style.display = "none";
+      }
+    }
+
+    const cancelAllPopups = async () => {
+      configCreate.style.display = "none";
+      reestrCreate.style.display = "none";
+      appsCreate.style.display = "none";
+    }
+
+
+    document.getElementById('config').addEventListener('click', createPopupConfig);
+    document.getElementById('reestr').addEventListener('click', createPopupReestr);
+    document.getElementById('apps').addEventListener('click', createPopupApps);
+
+    document.querySelectorAll(".closeButton").forEach(btn => {
+      btn.addEventListener('click', cancelAllPopups)
+    })
+
+
+
+    const saveTextToFile = (text, fileName) => {
+      const blob = new Blob([text], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName;
+      a.click();
+    };
+
+    // Обработчик для кнопки "Сохранить как" в попапе "Конфигурация ПК"
+    document.getElementById('accessButton').addEventListener('click', () => {
+      const content = document.getElementById('content').innerText; // Получаем текст из элемента content
+      saveTextToFile(content, 'system_info.txt'); // Сохраняем текст в файл system_info.txt
+    });
+
+    // Обработчик для кнопки "Сохранить как" в попапе "Реестр"
+    document.getElementById('accessButton').addEventListener('click', () => {
+      const content = document.getElementById('content').innerText; // Получаем текст из элемента content
+      saveTextToFile(content, 'registry_info.txt'); // Сохраняем текст в файл registry_info.txt
+    });
+
+    // Обработчик для кнопки "Сохранить как" в попапе "Список ПО"
+    document.getElementById('accessButton').addEventListener('click', () => {
+      const content = document.getElementById('content').innerText; // Получаем текст из элемента content
+      saveTextToFile(content, 'apps_info.txt'); // Сохраняем текст в файл apps_info.txt
+    });
+
+
   </script>
 </body>
 </html>

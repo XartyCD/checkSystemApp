@@ -33,7 +33,7 @@ img {
 /* Обнуление стилей */
 
 .header {
-    background-image: linear-gradient( rgba(0, 0, 0, 0.01), rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.9) ), url(nevrolog.jpg);
+    background-color: #E45151;
     width: 100vw;
     height: 100vh;
     min-height: 140px;

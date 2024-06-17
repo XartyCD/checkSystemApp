@@ -58,14 +58,15 @@
           document.getElementById('password').value = '';
         }
         else if (data.success && data.user) {
-          window.electron.send('open-account-window')
-
-          window.close()
+          window.electron.send('open-account-window');
+          localStorage.setItem('userLogin', login);
+          window.close();
         }
       } catch (error) {
         console.error(error.message);
       }
     };
+
 
     document.getElementById('authButton').addEventListener('click', handleLogin)
 
