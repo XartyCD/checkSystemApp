@@ -9,19 +9,13 @@
     <nav class="nav">
       <button id="closeProfile">Выйти из аккаунта</button>
       <p class="profile__text">Вы авторизованы как <span id="username"></span></p>
-      <button id="deleteBut">Удалить пользователя</button>
+      <button id="deleteBut">Удалить профиль</button>
     </nav>
     <main class="main">
-      <div class="history">
-        <div id="applicationsContainer">
-          <h2>Прошлые сканирования:</h2>
-          <ul id="applicationsList"></ul>
-        </div>
-      </div>
       <div class="diagnostic__wrapper">
         <div class="diagnostic">
           <button class="config" id="config">Конфигурация ПК</button>
-          <button class="reestr" id="reestr">Реестр</button>
+          <button class="reestr" id="reestr">Реестр (только для Windows)</button>
           <button class="apps" id="apps">Список ПО</button>
         </div>
       </div>
@@ -30,7 +24,7 @@
         <div class="confirm">
           <p class="item-text">Ваша конфигурация</p>
         </div>
-        <div class="info" id="content"></div>
+        <div class="info" id="contentConfig">Идет проверка комплектующих...</div>
         <div class="buttons">
           <button class="closeButton" id="cancelButton">Отмена</button>
           <button id="accessButtonConfig" download="system_info.txt">Сохранить как</button>
@@ -39,8 +33,9 @@
 
       <div id="popup__reestr">
         <div class="confirm">
-          <p class="item-text">Ваш журнал</p>
+          <p class="item-text">Ваш реестр</p>
         </div>
+        <div class="info" id="contentReestr">Просматриваем записи...</div>
         <div class="buttons">
           <button class="closeButton" id="cancelButton">Отмена</button>
           <button id="accessButtonReestr" download="reestr_info.txt">Сохранить как</button>
@@ -49,8 +44,9 @@
 
       <div id="popup__apps">
         <div class="confirm">
-          <p class="item-text">Ваши приложения</p>
+          <p class="item-text">Список вашего ПО</p>
         </div>
+        <div class="info" id="contentApps">Ищем ПО...</div>
         <div class="buttons">
           <button class="closeButton" id="cancelButton">Отмена</button>
           <button id="accessButtonApps" download="apps_info.txt">Сохранить как</button>
@@ -74,25 +70,24 @@
         
         // Format OS information
         const osDetails = `${systemInfo.osInfo.distro} ${systemInfo.osInfo.release}`;
+
+        const gpus = systemInfo.gpu.controllers.map(gpu => `${gpu.model}`);
         
         // Format memory usage
         const usedMemory = systemInfo.memory.used / (1024 * 1024 * 1024);
-        
-        // Format CPU temperature (handle null case)
-        const cpuTemp = systemInfo.cpuTemp ? `${systemInfo.cpuTemp.main} °C` : 'N/A';
 
         // Update DOM elements with system information
         const content = `
-          <div>Motherboard: ${systemInfo.motherboard.manufacturer} ${systemInfo.motherboard.model}</div>
+          <div>Мат. плата: ${systemInfo.motherboard.manufacturer} ${systemInfo.motherboard.model}</div>
           <div>CPU: ${systemInfo.cpu.manufacturer} ${systemInfo.cpu.brand}</div>
-          <div>Memory: ${(systemInfo.memory.total / 1024 / 1024 / 1024).toFixed(2)} Гб (Используется: ${usedMemory.toFixed(2)} Гб)</div>
-          <div>Disk(s): ${disks.join(', ')}</div>
-          <div>OS: ${osDetails}</div>
-          <div>CPU Temperature: ${cpuTemp}</div>
-          <div id="cpu-load">CPU Load: Вычисление... </div>
-          <div id="mem-usage">Memory Usage: Вычисление... </div>
+          <div>Видеокарта: ${gpus.join(', ')}</div>
+          <div>ОЗУ: ${(systemInfo.memory.total / 1024 / 1024 / 1024).toFixed(2)} Гб </div>
+          <div>Накопители: ${disks.join(', ')}</div>
+          <div>OC: ${osDetails}</div>
+          <div id="cpu-load">Загрузка процессора: Вычисление... </div>
+          <div id="mem-usage">ОЗУ используется: Вычисление... </div>
         `;
-        document.getElementById('content').innerHTML = content;
+        document.getElementById('contentConfig').innerHTML = content;
       } catch (error) {
         console.error('Error scanning system:', error);
       }
@@ -104,7 +99,7 @@
         const cpuLoad = await window.electron.getCpuLoad();
         const cpuLoadElement = document.getElementById('cpu-load');
         if (cpuLoadElement) {
-          cpuLoadElement.innerText = `CPU Load: ${(cpuLoad * 100).toFixed(2)}%`;
+          cpuLoadElement.innerText = `Загрузка процессора: ${(cpuLoad * 100).toFixed(2)}%`;
         }
       } catch (error) {
         console.error('Error updating CPU load:', error);
@@ -117,7 +112,7 @@
         const usedMemory = memInfo.used / (1024 * 1024 * 1024);
         const memUsageElement = document.getElementById('mem-usage');
         if (memUsageElement) {
-          memUsageElement.innerText = `Memory Usage: ${usedMemory.toFixed(2)} GB`;
+          memUsageElement.innerText = `ОЗУ используется: ${usedMemory.toFixed(2)} GB`;
         }
       } catch (error) {
         console.error('Error updating memory usage:', error);
@@ -131,6 +126,43 @@
     });
 
     //Динамические значения
+
+
+
+    const scanReestr = async () => {
+      try {
+        const registryEntries = await window.electron.getRegistryInfo();
+        
+        // Выводим информацию о записях реестра
+        const content = document.getElementById('contentReestr');
+        content.innerHTML = ''; // Очищаем содержимое, если требуется
+        
+        // Проходимся по каждой записи реестра и формируем HTML для отображения
+        for (const key in registryEntries) {
+          if (registryEntries.hasOwnProperty(key)) {
+            const value = registryEntries[key];
+            const entryHtml = `<div><strong>${key}</strong>: ${value.value}</div>`;
+            content.innerHTML += entryHtml;
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching registry info:', error);
+      }
+    };
+
+
+
+    const scanApps = async () => {
+      console.log(3)
+      try {
+        const apps = await window.electron.getInstalledApps();
+        const content = document.getElementById('contentApps');
+        content.innerText = apps.map(app => `${app.name} (${app.version})`).join('\n');
+        console.log(123)
+      } catch (error) {
+        console.error('Error fetching installed apps:', error);
+      }
+    };
 
 
     document.getElementById('closeProfile').addEventListener('click', () => {
@@ -182,6 +214,7 @@
     const reestrCreate = document.getElementById('popup__reestr');
     const createPopupReestr = () => {
       if (getComputedStyle(reestrCreate).display == 'none') {
+        scanReestr()
         reestrCreate.style.display = "flex";
         configCreate.style.display = "none";
         appsCreate.style.display = "none";
@@ -195,6 +228,7 @@
     const appsCreate = document.getElementById('popup__apps');
     const createPopupApps = () => {
       if (getComputedStyle(appsCreate).display == 'none') {
+        scanApps()
         appsCreate.style.display = "flex";
         configCreate.style.display = "none";
         reestrCreate.style.display = "none";
@@ -209,11 +243,13 @@
       reestrCreate.style.display = "none";
       appsCreate.style.display = "none";
     }
+    
 
 
     document.getElementById('config').addEventListener('click', createPopupConfig);
     document.getElementById('reestr').addEventListener('click', createPopupReestr);
     document.getElementById('apps').addEventListener('click', createPopupApps);
+    document.getElementById('deleteBut').addEventListener('click', deleteUser);
 
     document.querySelectorAll(".closeButton").forEach(btn => {
       btn.addEventListener('click', cancelAllPopups)
@@ -231,19 +267,19 @@
 
     // Обработчик для кнопки "Сохранить как" в попапе "Конфигурация ПК"
     document.getElementById('accessButtonConfig').addEventListener('click', () => {
-      const content = document.getElementById('content').innerText; // Получаем текст из элемента content
+      const content = document.getElementById('contentConfig').innerText; // Получаем текст из элемента content
       saveTextToFile(content, 'system_info.txt'); // Сохраняем текст в файл system_info.txt
     });
 
     // Обработчик для кнопки "Сохранить как" в попапе "Реестр"
     document.getElementById('accessButtonReestr').addEventListener('click', () => {
-      const content = document.getElementById('content').innerText; // Получаем текст из элемента content
+      const content = document.getElementById('contentReestr').innerText; // Получаем текст из элемента content
       saveTextToFile(content, 'registry_info.txt'); // Сохраняем текст в файл registry_info.txt
     });
 
     // Обработчик для кнопки "Сохранить как" в попапе "Список ПО"
     document.getElementById('accessButtonApps').addEventListener('click', () => {
-      const content = document.getElementById('content').innerText; // Получаем текст из элемента content
+      const content = document.getElementById('contentApps').innerText; // Получаем текст из элемента content
       saveTextToFile(content, 'apps_info.txt'); // Сохраняем текст в файл apps_info.txt
     });
 

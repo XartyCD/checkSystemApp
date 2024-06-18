@@ -6,7 +6,9 @@
 </head>
 <body>
   <div class="header">
+
     <div class="header__wrapper">
+      <div id="popup"><p id="popup-txt"></p></div>
       <h1>Пожалуйста, авторизуйтесь!</h1>
 
       <p class="item-text">Логин:</p>
@@ -31,14 +33,28 @@
   </div>
 
   <script>
+    const popup = document.getElementById('popup');
+    const createPopup = () => {
+      if (getComputedStyle(popup).display == 'none') {
+        popup.style.display = "flex";
+        setTimeout(() => {popup.style.display = "none"}, 2100)
+      }
+    }
+
+
     const handleLogin = async (e) => {
       e.preventDefault();
       try {
         const login = document.getElementById('login').value;
         const password = document.getElementById('password').value;
 
+        // window.electron.send('open-account-window');
+        // localStorage.setItem('userLogin', login);
+        // window.close();
+
         if (!login || !password) {
-          alert('Пожалуйста, заполните все поля.');
+          createPopup()
+          document.getElementById("popup-txt").innerHTML = "Пожалуйста, заполните все поля!"
           return;
         }
 
@@ -53,7 +69,8 @@
         const data = await response.json();
 
         if (!data.success) {
-          alert("Неверные данные")
+          createPopup()
+          document.getElementById("popup-txt").innerHTML = "Неверные данные"
           document.getElementById('login').value = '';
           document.getElementById('password').value = '';
         }

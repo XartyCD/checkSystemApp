@@ -2,6 +2,8 @@ const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
 const si = require('systeminformation');
 const osu = require('os-utils');
+const regedit = require('regedit');
+const { exec } = require('child_process');
 
 let mainWindow;
 
@@ -41,8 +43,8 @@ ipcMain.on('open-auth-window', () => {
 // Создание нового окна при получении сообщения от рендерера
 ipcMain.on('open-register-window', () => {
   const registerWindow = new BrowserWindow({
-    width: 400,
-    height: 300,
+    width: 430,
+    height: 360,
     modal: true, // Делаем новое окно модальным
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -56,8 +58,8 @@ ipcMain.on('open-register-window', () => {
 
 ipcMain.on('open-account-window', () => {
   const accountWindow = new BrowserWindow({
-    width: 900,
-    height: 600,
+    width: 870,
+    height: 640,
     modal: false, // Делаем новое окно модальным
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -69,20 +71,6 @@ ipcMain.on('open-account-window', () => {
   accountWindow.loadFile(path.join(__dirname, 'interface', 'account.html'));
 });
 
-ipcMain.on('open-edit-window', () => {
-  const editWindow = new BrowserWindow({
-    width: 600,
-    height: 500,
-    modal: true, // Делаем новое окно модальным
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: false,
-      contextIsolation: true
-    }
-  });
-
-  editWindow.loadFile(path.join(__dirname, 'interface', 'changeApplication.html'));
-});
 
 
 
@@ -133,4 +121,76 @@ ipcMain.handle('get-cpu-load', () => {
 });
 
 
+ipcMain.handle('get-registry-info', async () => {
+  try {
+    const regKey = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
+    const regData = await regedit.promisified.list(regKey);
 
+    // Извлекаем нужные данные
+    const registryEntries = regData[regKey].values;
+
+    // Преобразуем данные в нужный формат, если требуется
+    return registryEntries;
+  } catch (error) {
+    console.error('Error fetching registry info:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('get-installed-apps', async () => {
+  const platform = process.platform;
+
+  if (platform === 'win32') {
+    return getInstalledAppsWindows();
+  } else if (platform === 'darwin') {
+    return getInstalledAppsMac();
+  } else if (platform === 'linux') {
+    return getInstalledAppsLinux();
+  } else {
+    throw new Error('Unsupported platform');
+  }
+});
+
+function getInstalledAppsWindows() {
+  return new Promise((resolve, reject) => {
+    exec('wmic product get name,version', (error, stdout, stderr) => {
+      if (error) {
+        return reject(error);
+      }
+      const lines = stdout.split('\n').slice(1);
+      const apps = lines.map(line => {
+        const parts = line.trim().split(/\s{2,}/);
+        return { name: parts[0], version: parts[1] };
+      }).filter(app => app.name);
+      resolve(apps);
+    });
+  });
+}
+
+function getInstalledAppsMac() {
+  return new Promise((resolve, reject) => {
+    exec('system_profiler SPApplicationsDataType -json', (error, stdout, stderr) => {
+      if (error) {
+        return reject(error);
+      }
+      const apps = JSON.parse(stdout).SPApplicationsDataType;
+      resolve(apps.map(app => ({ name: app._name, version: app.version })));
+    });
+  });
+}
+
+function getInstalledAppsLinux() {
+  return new Promise((resolve, reject) => {
+    exec('dpkg-query -W -f=\'${Package} ${Version}\n\'', (error, stdout, stderr) => {
+      if (error) {
+        return reject(error);
+      }
+      const lines = stdout.split('\n');
+      const apps = lines.map(line => {
+        const parts = line.trim().split(' ');
+        return { name: parts[0], version: parts[1] };
+      }).filter(app => app.name);
+      resolve(apps);
+    });
+  });
+}

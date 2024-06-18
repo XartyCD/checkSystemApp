@@ -8,6 +8,7 @@
   <button class="close" onclick="window.close();">Назад</button>
   <div class="header">
     <div class="header__wrapper">
+      <div id="popup"><p id="popup-txt"></p></div>
       <h1>Регистрация</h1>
       <p>Придумайте Логин:</p>
       <input
@@ -27,6 +28,15 @@
   </div>
 
   <script> 
+    const popup = document.getElementById('popup');
+    const createPopup = () => {
+      if (getComputedStyle(popup).display == 'none') {
+        popup.style.display = "flex";
+        setTimeout(() => {popup.style.display = "none"}, 2100)
+      }
+    }
+
+
     const handleRegister = async (e) => {
       e.preventDefault();
       try {
@@ -34,7 +44,8 @@
         const password = document.getElementById('password').value;
 
         if (!login || !password) {
-          alert('Пожалуйста, заполните все поля.');
+          createPopup()
+          document.getElementById("popup-txt").innerHTML = "Заполните все поля!"
           return;
         }
 
@@ -49,7 +60,8 @@
         const data = await response.json();
 
         if (data.success === "repeat") {
-          alert('Пользователь уже существует.');
+          createPopup()
+          document.getElementById("popup-txt").innerHTML = "Пользователь уже существует"
           throw new Error(data.message);
         }
         if (!data.success) {

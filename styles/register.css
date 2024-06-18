@@ -85,3 +85,24 @@ img {
     border-radius: 2px;
     width: 190px;
 }
+
+#popup {
+    width: 70%;
+    min-width: 340px;
+    height: 20vh;
+    min-height: 50px;
+    max-height: 200px;
+    background-color: rgba(251, 255, 0, 0.541);
+    display: none;
+    flex-direction: column;
+    border-radius: 3px;
+    border: 4px solid black;
+    justify-content: space-around;
+    align-items: center;
+    font-size: 18px;
+    position: absolute;
+    top: 35%; /* Отступ сверху */
+    left: 50%; /* Сначала сдвигаем элемент к середине */
+    transform: translateX(-50%); /* Затем смещаем его на половину ширины назад */
+    z-index: 6;
+}
